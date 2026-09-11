@@ -3,6 +3,6 @@ import test from "node:test";
 
 import { greeting } from "../src/greeting.js";
 
-test("returns the greeting", () => {
-  assert.equal(greeting(), "Hello from Node Project JS!");
+void test("returns the greeting", () => {
+  assert.equal(greeting(), "Hello from Node Project TS!");
 });

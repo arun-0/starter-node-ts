@@ -3,6 +3,7 @@
 //    - ESLint automatic fixes on explicit save for languages configured in ESLint.
 //    - Project-local Prettier configuration.
 // TypeScript linting additionally requires TypeScript and typescript-eslint.
+
 {
   // eol setting for vscode (backup in case developer not having editorconfig plugin installed)
   "files.eol": "\n",
@@ -11,6 +12,10 @@
   // vs code Auto Saving in case developer has not set it up
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 20000,
+
+  // these 2 tell VS Code where the project-local TypeScript language service is and prompt developers to select it.
+  "js/ts.tsdk.path": "./node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
 
   "prettier.requireConfig": true,
 

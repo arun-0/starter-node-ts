@@ -1,15 +1,124 @@
-# starter-node-js
+# starter-node-ts
 
-A professional Node.js starter project (for just JS, NO TS) using:
+A Node.js TypeScript starter for native Windows 11 development with Git Bash, fnm and Visual Studio Code. No WSL required.
+
+The project uses:
 
 - Native ECMAScript modules
+- Strict TypeScript type-checking
+- Type-aware ESLint rules
+- Prettier formatting
 - Node’s built-in test runner
-- ESLint for code-quality checks
-- Prettier for formatting
-- fnm for selecting the Node.js version
-- VS Code project settings for a consistent development experience
+- `tsx` for development and TypeScript tests
+- `tsc` for production builds
 
-The project targets native Windows 11 development with Git Bash—no WSL is required.
+## From the JS starter to this one
+
+This repository’s first commit is the `starter-node-js` repository’s HEAD, the same commit object. The second commit, "TS", is everything that turns that JavaScript project into this TypeScript one. The authoritative change list is therefore:
+
+```bash
+git diff HEAD~1 HEAD --stat
+```
+
+In words:
+
+### 1. Packages
+
+The JS starter already has ESLint, Prettier and their supporting packages (`eslint`, `@eslint/js`, `globals`, `eslint-config-prettier`, `prettier`). TypeScript adds four:
+
+```bash
+npm install -D typescript typescript-eslint @types/node tsx
+```
+
+| Package             | Role                                                                         |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `typescript`        | The `tsc` compiler and type checker                                          |
+| `tsx`               | Runs TypeScript directly during development and tests, without type-checking |
+| `typescript-eslint` | Lets ESLint parse TypeScript and apply TypeScript-specific, type-aware rules |
+| `@types/node`       | Type declarations for Node APIs such as `node:test`, `process` and `Buffer`  |
+
+`tsx` transforms and runs TypeScript but does not type-check it. `tsc --noEmit` does the type-checking, as `npm run typecheck`.
+
+### 2. Two new files: `tsconfig.json` and `tsconfig.build.json`
+
+- `tsconfig.json` checks both application and test code and emits nothing. `strict` turns on the core strict family; `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` add checks that `strict` does not cover; `NodeNext` models Node’s real ESM/CommonJS behaviour and matches `"type": "module"`.
+- `tsconfig.build.json` extends it, compiles only `src/` into `dist/` with source maps, and keeps tests out of the production build.
+
+### 3. `eslint.config.js`
+
+Two treatments in one flat config. `.js` files, such as `eslint.config.js` itself, get ordinary JavaScript linting. `.ts` files get TypeScript parsing plus typescript-eslint’s recommended and type-checked rules. `projectService: true` gives typescript-eslint the same project type information that VS Code uses. Type-aware linting is slower than syntax-only linting and finds subtler errors.
+
+### 4. Rename `.js` to `.ts` and add types
+
+`src/greeting.js` becomes `src/greeting.ts` with a typed signature, `export function greeting(): string`. The same for `index` and the test. Imports keep the `.js` extension, `import { greeting } from "./greeting.js"`, because Node ESM needs the runtime extension and, under `NodeNext`, TypeScript resolves `./greeting.js` to `greeting.ts` during development. `tsx --test` runs the `.test.ts` files with Node’s built-in test runner.
+
+### 5. VS Code
+
+- `settings.json` gains two lines that point VS Code at the project-local TypeScript language service and prompt to use it.
+- `launch.json` debugs `src/index.ts` directly through tsx. Production still runs `dist/index.js`.
+- `tasks.json` gains `npm run build` as the default build task.
+- No extra extension. VS Code ships TypeScript language support, the project-local `typescript` package supplies the compiler and language-service version, the ESLint extension shows typescript-eslint findings, and the Prettier extension formats `.ts`.
+
+### 6. Scripts in `package.json`
+
+| Command        | JS                                                 | TS                                                                                       |
+| -------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `lint`         | `eslint .`                                         | same                                                                                     |
+| `lint:fix`     | `eslint . --fix`                                   | same                                                                                     |
+| `format:check` | `prettier --check .`                               | same                                                                                     |
+| `format`       | `prettier --write .`                               | same                                                                                     |
+| `typecheck`    | -                                                  | `tsc --noEmit`                                                                           |
+| `check`        | `npm run lint && npm run format:check && npm test` | `npm run lint && npm run format:check && npm run typecheck && npm test && npm run build` |
+| `clean`        | -                                                  | removes `dist/`                                                                          |
+| `build`        | -                                                  | `npm run clean && tsc -p tsconfig.build.json`                                            |
+| `start`        | `node src/index.js`                                | `node --enable-source-maps dist/index.js`                                                |
+| `dev`          | `node --watch src/index.js`                        | `tsx watch src/index.ts`                                                                 |
+| `test`         | `node --test`                                      | `tsx --test`                                                                             |
+| `test:watch`   | -                                                  | `tsx --test --watch`                                                                     |
+
+The distinction:
+
+- `npm run dev` runs TypeScript directly through tsx.
+- `npm run typecheck` checks types without creating output.
+- `npm run build` compiles `src/*.ts` into `dist/*.js`.
+- `npm start` runs the compiled JavaScript.
+
+### 7. Unchanged
+
+`.editorconfig`, `.prettierrc.json`, `.prettierignore`, `.gitattributes` and `.gitignore` need no change. They already cover `.ts` files and ignore `dist/`.
+
+## Project structure
+
+```text
+starter-node-ts/
+├── .editorconfig                  <---------------- editor-agnostic basics: UTF-8, LF, 2-space indent, final newline; CRLF for .bat/.cmd/.ps1
+├── .gitattributes                 <---------------- git stores text as LF on every OS; .bat/.cmd stay CRLF
+├── .gitignore                     <---------------- keeps node_modules, dist, coverage, logs and .env out of git
+├── .nvmrc                         <---------------- "24.20.0": the Node version `fnm use` selects and `fnm install` fetches
+├── .prettierignore                <---------------- what Prettier skips: node_modules, dist, coverage, package-lock.json
+├── .prettierrc.json               <---------------- Prettier settings: 100 columns, 2 spaces, semicolons, double quotes, LF
+├── .vscode/
+│   ├── extensions.json            <---------------- recommended extensions: ESLint, Prettier, EditorConfig; no TypeScript extension needed
+│   ├── launch.json                <---------------- two debug configs: src/index.ts through tsx with source maps, and npm test
+│   ├── settings.json              <---------------- Prettier formats on save, ESLint fixes on save, workspace TypeScript language service
+│   └── tasks.json                 <---------------- Terminal > Run Task: npm run build (default build task), npm run check (default test task)
+├── README-js.md                   <---------------- the JS starter's README, kept for side-by-side reading; identical to starter-node-js/README.md
+├── README.md                      <---------------- this file
+├── eslint.config.js               <---------------- ESLint flat config: JS rules for .js files, typescript-eslint type-aware rules for .ts files
+├── package.json                   <---------------- name, scripts, dev-dependency ranges, Node engine range, "type": "module"
+├── package-lock.json              <---------------- exact resolved dependency tree; committed; written by npm, never by hand
+├── src/
+│   ├── greeting.ts                <---------------- greeting(): the example application logic, typed
+│   └── index.ts                   <---------------- entry point, prints the greeting; compiled to dist/index.js for `npm start`
+├── test/
+│   └── greeting.test.ts           <---------------- node:test example, run through tsx by `npm test`
+├── tsconfig.json                  <---------------- type-checking config for src/ and test/: strict, NodeNext, no emit
+├── tsconfig.build.json            <---------------- extends tsconfig.json; compiles src/ only into dist/ with source maps
+│
+├── node_modules/                  <---------------- generated by npm ci, ignored: installed packages and their .bin shims
+├── dist/                          <---------------- generated by npm run build, ignored: compiled JavaScript and source maps
+└── coverage/                      <---------------- generated only if you add coverage, ignored; empty today
+```
 
 ## Start a new project from this template
 
@@ -17,7 +126,7 @@ The project targets native Windows 11 development with Git Bash—no WSL is requ
 2. Rename the project. Every occurrence to change:
 
    ```bash
-   grep -rn --exclude-dir=.git --exclude-dir=node_modules -e node-project-js -e "Node Project JS" .
+   grep -rn --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist -e node-project-ts -e "Node Project TS" .
    ```
 
    Edit `package.json`, the greeting and its test by hand. `package-lock.json` names the project twice;
@@ -44,30 +153,19 @@ The project targets native Windows 11 development with Git Bash—no WSL is requ
   root commit. No history, no parent commit, no git link back to the template.
 - Not copied: issues, pull requests, wiki, releases, settings, branch protection, Actions secrets,
   collaborators, topics, and the template flag itself.
-- Nothing inside any file is substituted. That is why step 2 above renames `node-project-js` by hand.
+- Nothing inside any file is substituted. That is why step 2 above renames `node-project-ts` by hand.
 - GitHub shows "generated from ..." on the new repo. It is a label only; deleting or un-templating
   the source does not touch generated projects.
 
 ## Prerequisites
 
-Install these applications before working on the project:
+Install:
 
 - [Git for Windows](https://git-scm.com/download/win), including Git Bash
-- [fnm](https://github.com/Schniz/fnm), the Fast Node Manager
+- [fnm](https://github.com/Schniz/fnm)
 - [Visual Studio Code](https://code.visualstudio.com/)
-- EditorConfig, ESLint, Prettier plugins (VS Code does not need plugins for JS/TS)
 
-The required Node.js version is recorded in:
-
-```text
-.nvmrc
-```
-
-The project currently uses:
-
-```text
-24.20.0
-```
+The required Node.js version is recorded in `.nvmrc`.
 
 ## First-time setup
 
@@ -80,66 +178,56 @@ npm ci
 npm run check
 ```
 
-What these commands do:
+The commands perform the following work:
 
-- `fnm install` reads `.nvmrc` and installs the required Node.js version if necessary.
-- `fnm use` selects that version for the current terminal session.
+- `fnm install` installs the Node version recorded in `.nvmrc` if necessary.
+- `fnm use` selects that version for the current terminal.
 - `npm ci` installs the exact dependency tree recorded in `package-lock.json`.
-- `npm run check` runs linting, formatting validation and tests.
+- `npm run check` runs linting, formatting validation, type-checking, tests and the production build.
 
-You can confirm the selected versions with:
+Confirm the active versions with:
 
 ```bash
 node --version
 npm --version
+npx tsc --version
 ```
 
-## Opening the project in VS Code
+## Open in VS Code
 
-Select the project’s Node version before opening VS Code:
+Select the project’s Node version before launching VS Code:
 
 ```bash
 fnm use
 code .
 ```
 
-Opening VS Code from this terminal helps VS Code tasks, debugging configurations and integrated terminals inherit the selected Node.js environment.
+When prompted, install the workspace’s recommended extensions.
 
-When prompted, install the extensions recommended by:
+Open a TypeScript file and accept the prompt to use the workspace TypeScript version. We can also select it manually:
 
 ```text
-.vscode/extensions.json
+Ctrl+Shift+P
+→ TypeScript: Select TypeScript Version
+→ Use Workspace Version
 ```
 
-The recommended extensions are:
+This keeps VS Code’s type analysis aligned with the TypeScript compiler installed in the project.
 
-- ESLint [by Microsoft "dbaeumer.vscode-eslint"] - Liner
-- Prettier [by Prettier "esbenp.prettier-vscode"] - Code formatter
-- EditorConfig [by EditorConfig "editorconfig.editorconfig"]
+## Development
 
-## Running the application
-
-Run normally:
-
-```bash
-npm start
-```
-
-Run in watch mode during development:
+Run the application directly from TypeScript in watch mode:
 
 ```bash
 npm run dev
 ```
 
-Watch mode restarts the application when relevant source files change.
+`tsx` restarts the application when an imported source file changes.
 
-## Development workflow
-
-For normal ongoing development:
+Run the tests in watch mode:
 
 ```bash
-fnm use
-npm run dev
+npm run test:watch
 ```
 
 Before committing changes:
@@ -148,7 +236,54 @@ Before committing changes:
 npm run check
 ```
 
-If linting or formatting problems are reported, apply automatic fixes:
+## Production build
+
+Compile the application:
+
+```bash
+npm run build
+```
+
+The compiled JavaScript and source maps are written to:
+
+```text
+dist/
+```
+
+Run the compiled application:
+
+```bash
+npm start
+```
+
+The production command executes JavaScript from `dist/`; it does not execute the TypeScript source directly.
+
+## Available commands
+
+| Command                | Purpose                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| `npm run clean`        | Removes generated `dist/` output                          |
+| `npm run build`        | Cleans and compiles production source code                |
+| `npm start`            | Runs the compiled application                             |
+| `npm run dev`          | Runs TypeScript directly in watch mode                    |
+| `npm test`             | Runs TypeScript tests once                                |
+| `npm run test:watch`   | Runs tests continuously                                   |
+| `npm run typecheck`    | Checks application and test types without emitting files  |
+| `npm run lint`         | Reports ESLint problems without modifying files           |
+| `npm run lint:fix`     | Applies automatically fixable ESLint changes              |
+| `npm run format`       | Formats supported files using Prettier                    |
+| `npm run format:check` | Checks formatting without modifying files                 |
+| `npm run check`        | Runs all repository validation and builds the application |
+
+The complete validation order is:
+
+```text
+lint → format:check → typecheck → test → build
+```
+
+## Fixing reported problems
+
+Apply safe ESLint fixes and formatting:
 
 ```bash
 npm run lint:fix
@@ -156,168 +291,137 @@ npm run format
 npm run check
 ```
 
-Prettier runs after ESLint’s automatic fixes so that formatting is finalized consistently.
+The final `check` confirms that the corrected project passes every validation stage.
 
-## Available npm scripts
+## TypeScript configuration
 
-| Command                | Purpose                                         |
-| ---------------------- | ----------------------------------------------- |
-| `npm start`            | Runs the application normally                   |
-| `npm run dev`          | Runs the application using Node’s watch mode    |
-| `npm test`             | Runs tests using Node’s built-in test runner    |
-| `npm run lint`         | Reports ESLint problems without modifying files |
-| `npm run lint:fix`     | Applies ESLint’s automatically fixable changes  |
-| `npm run format`       | Formats supported files using Prettier          |
-| `npm run format:check` | Checks formatting without modifying files       |
-| `npm run check`        | Runs linting, formatting validation and tests   |
+The project has two TypeScript configuration files.
 
-The `check` script executes:
+### `tsconfig.json`
+
+This is the main development and type-checking configuration. It includes both:
 
 ```text
-lint → format:check → test
+src/
+test/
 ```
 
-It does not intentionally rewrite source files.
+It enables strict checks but does not emit JavaScript.
 
-## Project structure
+### `tsconfig.build.json`
+
+This extends `tsconfig.json` and compiles only:
 
 ```text
-starter-node-js/
-├── .editorconfig                  <---------------- editor-agnostic basics: UTF-8, LF, 2-space indent, final newline; CRLF for .bat/.cmd
-├── .gitattributes                 <---------------- git stores text as LF on every OS; .bat/.cmd stay CRLF
-├── .gitignore                     <---------------- keeps node_modules, dist, coverage, logs and .env out of git
-├── .nvmrc                         <---------------- "24.20.0": the Node version `fnm use` selects and `fnm install` fetches
-├── .prettierignore                <---------------- what Prettier skips: node_modules, dist, coverage, package-lock.json
-├── .prettierrc.json               <---------------- Prettier settings: 100 columns, 2 spaces, semicolons, double quotes, LF
-├── .vscode/
-│   ├── extensions.json            <---------------- recommended extensions: ESLint, Prettier, EditorConfig
-│   ├── launch.json                <---------------- two debug configs: npm run dev, npm test
-│   ├── settings.json              <---------------- Prettier formats on save, ESLint fixes on save, for JS/TS/JSON/Markdown
-│   └── tasks.json                 <---------------- Terminal > Run Task: npm run check, the default test task
-├── README.md                      <---------------- this file
-├── eslint.config.js               <---------------- ESLint flat config: recommended rules, ESM, Node globals, Prettier conflicts off
-├── package.json                   <---------------- name, scripts, dev-dependency ranges, Node engine range, "type": "module"
-├── package-lock.json              <---------------- exact resolved dependency tree; committed; written by npm, never by hand
-├── src/
-│   ├── greeting.js                <---------------- greeting(): the example application logic
-│   └── index.js                   <---------------- entry point, prints the greeting; `npm start` runs it
-├── test/
-│   └── greeting.test.js           <---------------- node:test example; `npm test` runs it
-│
-├── node_modules/                  <---------------- generated by npm ci, ignored: installed packages and their .bin shims
-└── coverage/  dist/               <---------------- generated only if you add coverage or a build step, ignored; empty today
+src/
 ```
 
-## Development tools
-
-The project uses five development packages:
-
-| Package                  | Purpose                                                               |
-| ------------------------ | --------------------------------------------------------------------- |
-| `eslint`                 | Linting engine that identifies likely mistakes and questionable code  |
-| `@eslint/js`             | Official recommended JavaScript rules for ESLint                      |
-| `globals`                | Definitions of global names available in environments such as Node.js |
-| `eslint-config-prettier` | Disables ESLint rules that conflict with Prettier                     |
-| `prettier`               | Syntax-aware code formatter                                           |
-
-These are development dependencies rather than deployed application dependencies.
-
-They are installed under:
+Production output is written to:
 
 ```text
-node_modules/
+dist/
 ```
 
-Packages that provide commands create local command shims under:
-
-```text
-node_modules/.bin/
-```
-
-When an npm script runs, npm temporarily adds `node_modules/.bin` to `PATH`. Consequently:
-
-```bash
-npm run lint
-```
-
-can invoke the project-local ESLint command without requiring a global ESLint installation.
-
-## ESLint configuration
-
-The project uses ESLint’s modern flat configuration system:
-
-```text
-eslint.config.js
-```
-
-The configuration:
-
-- Enables the official recommended JavaScript rules from `@eslint/js`.
-- Analyzes project `.js` files as ECMAScript modules.
-- Defines standard Node.js globals through `globals.nodeBuiltin`.
-- Ignores generated `coverage/` and `dist/` content.
-- Loads `eslint-config-prettier/flat` last so it can disable rules that conflict with Prettier.
-
-ESLint already ignores `node_modules/` and `.git/`, so a separate `.eslintignore` file is not required.
+Tests are deliberately excluded from the production build.
 
 ## ECMAScript modules
 
-The following entry in `package.json` tells Node.js to treat `.js` files as ECMAScript modules:
+`package.json` contains:
 
 ```json
 "type": "module"
 ```
 
-This enables syntax such as:
+TypeScript uses Node’s module model:
 
-```js
+```json
+"module": "NodeNext",
+"moduleResolution": "NodeNext"
+```
+
+Relative imports in TypeScript source use the eventual JavaScript extension:
+
+```ts
 import { greeting } from "./greeting.js";
-
-export function example() {
-  return greeting();
-}
 ```
 
-The corresponding ESLint setting is:
+Although the source file is `greeting.ts`, the production runtime file is `greeting.js`. TypeScript’s `NodeNext` resolution understands this substitution.
 
-```js
-sourceType: "module",
+## Type-checking, linting and formatting
+
+These are separate operations:
+
+- TypeScript checks whether values and APIs are used consistently with their declared types.
+- ESLint detects suspicious code patterns and applies type-aware lint rules.
+- Prettier controls code layout and formatting.
+- Node’s test runner executes behavioral tests.
+
+They complement one another; none replaces all the others.
+
+The `tsx` development runner transforms TypeScript for execution but does not perform type-checking. Use:
+
+```bash
+npm run typecheck
 ```
 
-The distinction is:
+or:
 
-- `"type": "module"` controls how Node.js executes `.js` files.
-- `sourceType: "module"` controls how ESLint analyzes those files.
-- `globals.nodeBuiltin` tells ESLint which general Node.js global names are available.
+```bash
+npm run check
+```
 
-Using `globals.nodeBuiltin` instead of `globals.node` also helps detect accidental use of CommonJS-specific names such as `require`, `module`, `__dirname` and `__filename`.
+to verify types.
 
-## Formatting and VS Code saves
+## Development packages
 
-For supported JavaScript, TypeScript, JSON and Markdown files, the workspace settings configure the Prettier extension as the formatter.
+| Package                  | Role                                              |
+| ------------------------ | ------------------------------------------------- |
+| `typescript`             | Compiler and type checker                         |
+| `typescript-eslint`      | TypeScript parsing and ESLint rules               |
+| `@types/node`            | Type declarations for Node.js APIs                |
+| `tsx`                    | Direct TypeScript development and test runner     |
+| `eslint`                 | Linting engine                                    |
+| `@eslint/js`             | Official JavaScript ESLint rules                  |
+| `globals`                | Node global-variable definitions for ESLint       |
+| `eslint-config-prettier` | Disables ESLint rules that conflict with Prettier |
+| `prettier`               | Code formatter                                    |
 
-An explicit save, such as `Ctrl+S`, is configured to request:
+All are project-local development dependencies.
 
-- Automatically fixable ESLint changes for supported source files.
-- Prettier formatting.
-- Basic EditorConfig conventions such as line endings, indentation and final newlines.
+Prettier is exact-pinned because formatting can change between releases. `package-lock.json` records the exact resolved version of every direct and transitive dependency.
 
-EditorConfig provides basic file conventions. Prettier remains the full syntax-aware formatter.
+## ESLint typed linting
 
-The TypeScript-related VS Code settings prepare the editor for formatting future `.ts` and `.tsx` files. They do not, by themselves, enable TypeScript linting.
+`eslint.config.js` uses ESLint’s flat configuration system and typescript-eslint’s type-aware recommended rules.
+
+The project service reads the nearest `tsconfig.json` for each TypeScript file. This aligns ESLint’s type information with TypeScript and VS Code.
+
+Generated `dist/` and `coverage/` content is ignored. ESLint already ignores `node_modules/` and `.git/`, so the project does not require `.eslintignore`.
+
+## VS Code support
+
+VS Code includes its TypeScript language service, providing:
+
+- IntelliSense
+- Type errors in the editor
+- Symbol navigation
+- Rename and other refactoring operations
+- Import suggestions
+- Node debugging with source maps
+
+The workspace recommends:
+
+- ESLint (`dbaeumer.vscode-eslint`)
+- Prettier (`esbenp.prettier-vscode`)
+- EditorConfig (`editorconfig.editorconfig`)
+
+No additional stable TypeScript extension is required.
 
 ## Line endings
 
-The repository uses LF line endings for ordinary text files.
+Ordinary project text files use LF line endings.
 
-Windows command scripts retain CRLF:
-
-```text
-*.bat
-*.cmd
-```
-
-The policy is defined in `.gitattributes` and complemented by `.editorconfig`.
+Windows `.bat` and `.cmd` command scripts retain CRLF. The policy is defined by `.gitattributes` and complemented by `.editorconfig`.
 
 ## Inspecting dependencies
 
@@ -327,7 +431,7 @@ List direct dependencies:
 npm ls --depth=0
 ```
 
-List the complete transitive dependency tree:
+List the complete dependency tree:
 
 ```bash
 npm ls --all
@@ -336,17 +440,17 @@ npm ls --all
 Explain why a package is installed:
 
 ```bash
-npm explain eslint
+npm explain typescript-eslint
 ```
 
-## Recreating the development toolchain
+## Recreating the toolchain
 
-This section is only needed when rebuilding the project configuration from scratch. It is not required after cloning the repository; use `npm ci` in that situation.
+This section is for rebuilding the project configuration from scratch. After an ordinary clone, use `npm ci` instead.
 
-Install ESLint and its supporting configuration packages:
+Install TypeScript, ESLint and their supporting packages:
 
 ```bash
-npm install -D eslint @eslint/js globals eslint-config-prettier
+npm install -D eslint @eslint/js globals eslint-config-prettier typescript typescript-eslint @types/node tsx
 ```
 
 Install and exact-pin Prettier:
@@ -355,31 +459,13 @@ Install and exact-pin Prettier:
 npm install -D -E prettier
 ```
 
-Prettier is intentionally exact-pinned because formatting output can change between releases. The other dependency ranges are combined with the committed `package-lock.json`, which records the exact resolved dependency tree.
-
-## JavaScript-only scope
-
-This project currently uses JavaScript, not TypeScript. Therefore it intentionally does not include:
-
-```text
-tsconfig.json
-typescript-eslint
-```
-
-If TypeScript is introduced later, install and configure the necessary tooling:
-
-```bash
-npm install -D typescript typescript-eslint
-```
-
-The ESLint configuration must then also be extended to analyze TypeScript files.
-
 ## Version policy
 
 - `package-lock.json` pins exact versions of everything and is committed. `npm ci` installs exactly
   those, on every OS, and fails if the lock and `package.json` disagree.
-- The allowed ranges live in `package.json`: `^` for the ESLint family, so minors and patches may
-  move, and an exact pin for Prettier, because formatting output changes between releases.
+- The allowed ranges live in `package.json`: `^` for TypeScript, typescript-eslint, tsx, `@types/node`
+  and the ESLint family, so minors and patches may move, and an exact pin for Prettier, because
+  formatting output changes between releases.
 - `npm update` moves the lock within the ranges and never past them. It does not edit `package.json`.
 - To take a new major, widen the range in `package.json` on purpose, run `npm install`, run
   `npm run check`, commit both files.
@@ -394,13 +480,20 @@ drop the ignored ones and see only what git would commit.
 git ls-files --others --directory
 ```
 
+Remove only the build output:
+
+```bash
+npm run clean
+```
+
 Full cleanup, back to the state of a fresh clone:
 
 ```bash
-rm -rf node_modules coverage dist && npm cache verify
+rm -rf node_modules dist coverage && npm cache verify
 ```
 
 - `node_modules` is the whole environment. `npm ci` recreates it from the lock.
+- `dist` is recreated by `npm run build`, which `npm run check` includes.
 - `npm cache verify` checks npm's global download cache and garbage-collects unused entries. Safe.
 - `npm cache clean --force` is the bigger hammer: it wipes that cache for every project on the
   machine, and the next install anywhere re-downloads. Only when disk space matters.
@@ -424,5 +517,5 @@ What each step proves:
 - `fnm install` and `fnm use`: the Node version in `.nvmrc` is present and selected for this shell.
 - `npm ci`: a clean `node_modules` built exactly from `package-lock.json`.
 - `npm ls --depth=0`: the installed tree is complete and consistent with the lock.
-- `npm run check`: lint, format check and tests, in that order.
-- `npm start`: the application runs.
+- `npm run check`: lint, format check, type check, tests and the production build, in that order.
+- `npm start`: the compiled application in `dist/` runs.

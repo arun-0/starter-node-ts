@@ -2,17 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Node: npm run dev",
+      "name": "TypeScript: Debug application",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "dev"],
+      "runtimeArgs": ["--import=tsx"],
+      "program": "${workspaceFolder}/src/index.ts",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "sourceMaps": true,
       "skipFiles": ["<node_internals>/**"]
     },
     {
-      "name": "Node: npm test",
+      "name": "TypeScript: npm test",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
